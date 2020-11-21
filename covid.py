@@ -166,24 +166,26 @@ else:
     print("opa opa que rica esta la sopa")
 
 # %%
-    print("ingrese la fecha inicial para graficar")
-    datemin=getdate()
-    print("Ingrese la fecha final para graficar")
-    datemax=getdate()
-    grafica("new_cases",datemin,datemax)
-#df.plot()
-# %%
-def grafica(dato,datemin,datemax):
+def grafica(dato,fechamin,fechamax):
     plt.figure(figsize=(12,4))
     for pais in paisesElegidos:
         #print(pais)
         data=df[df["location"]==pais]
         #print(data)
         plt.plot(data["date"],data[dato],label=pais)
-    plt.xlim(datemin,datemax)
+    plt.xlim(fechamin,fechamax)
+    plt.xticks(rotation=60)
     plt.legend()
-    plt.title("Casos confirmados por dia")
+    plt.title(opciones[nOpcion]["texto"])
     plt.grid()
     plt.show()
+    print("ingrese la fecha inicial para graficar")
+    fechamin=getdate()
+    print("Ingrese la fecha final para graficar")
+    fechamax=getdate()
+    grafica("new_cases",fechamin,fechamax)
+#df.plot()
+# %%
+
 
 # %%
