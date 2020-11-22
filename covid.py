@@ -18,12 +18,8 @@
 # TODO:Para cada gráfico generado el usuario deberá poder ingresar un nombre de archivo y el programa genera un archivo .PNG del gráfico con el nombre indicado.
 # TODO:
 # TODO:Crear una aplicación de consola que se ejecute continuamente recibiendo comandos del usuario, el usuario debe indicar el modo de operación que desea y el programa le pide los datos requeridos. Luego de finalizar la tarea el programa regresa al inicio y le pide al usuario el próximo comando. Incluír un comando de ayuda para que el programa indique al usuario cómo utilizarlo. Incluír un comando de salida que provoca la finalización del programa.
-# TODO:
-# TODO:Sugerencia:
-# TODO:
-# TODO:Se pueden rotar las leyendas usando plt.xticks(rotation=60) (rotación de 60 grados). Es útil para leyendas largas, como por ejemplo, fechas.
-# TODO:En esta página web hay un ejemplo de gráficos logaritmicos
-# %%
+
+# %% importa librerias y declara algunas constantes
 import sys
 import numpy as np              #Ni se si lo necesito pero porsi
 from scipy import signal,misc   #Procesamiento de señales
@@ -32,13 +28,13 @@ import pandas as pd             #Para cargar datos
 import requests
 import datetime
 
-try:
-    from ngram import NGram
-except ImportError:
+# try:
+    # from ngram import NGram
+# except ImportError:
     #raise ImportError('No se encuentra el paquete NGram, si lo instala podra corregir errores...("pip install ngram")')
-    from pip._internal import main as pip
-    pip(['install', '--user', 'ngram'])
-    from ngram import NGram
+    # from pip._internal import main as pip
+    # pip(['install', '--user', 'ngram'])
+    # from ngram import NGram
 
 archivo=[]
 opciones=[
@@ -56,6 +52,9 @@ opciones=[
     },
     {"column":"total_deaths",
     "texto":"Muertes totales"
+    },
+    {"column":"salir",
+    "texto":"Finalizar programa"
     }]
 
 # %% definicion de funciones:
@@ -95,10 +94,10 @@ def chequear(pais):
     if pais in paises:
         print("El pais seleccionado es",pais)
         return pais
-    elif paisesNgram.find(pais,.2):
-        pais=paisesNgram.find(pais,.2)
-        print("El pais seleccionado es",pais)
-        return pais
+    # elif paisesNgram.find(pais,.2):
+        # pais=paisesNgram.find(pais,.2)
+        # print("El pais seleccionado es",pais)
+        # return pais
     else:
         #print("No encontrado ")
         return None
@@ -114,78 +113,135 @@ def getdate():
             print("fecha incorrecta")
     return date1
 
+def grafica(dato,fechamin,fechamax,extra):
+    fig= plt.figure(figsize=(12,4))
+    if extra=="log":
+        plt.yscale("log")
+    for pais in paisesElegidos:
+        data=df[df["location"]==pais]
+        if extra=="uno":
+            plt.plot(data["date"],data["total_cases"],label="Casos totales")
+            plt.plot(data['date'],data["total_deaths"],label="Muertes totales")
+            plt.title("Casos y muertes totales en",pais)
+        else:
+            plt.plot(data["date"],data[dato.get("column")],label=pais)
+            plt.title(dato.get("texto"))
+            
+    plt.xlim(fechamin,fechamax)
+    plt.xticks(rotation=60)
+    plt.legend()
+    #plt.title(opciones[nOpcion]["texto"])
+    plt.grid()
+    plt.show()
+    return fig
+
+def ingresarfechas():
+    print("ingrese la fecha inicial para graficar")
+    fechamin=getdate()
+    print("Ingrese la fecha final para graficar")
+    fechamax=getdate()
+    return fechamin,fechamax
+
 # %% Codigo principal:
 #opcion="local"  #para testing, ya trabajo con el archivo local
+print("Opciones:")
 for i in range(len(opciones)):
     print(i,":",opciones[i]["texto"])
 
-while True:
-    try:
-        nOpcion=int(input("Ingrese la opcion deseada: "))
-    except ValueError:
-        print("Debe ingresar un numero")
-    else:
-        if nOpcion:
-            break
-        else:
-            print("El valor debe ser ser una de las opciones")
+# while True:
+#     try:
+#         nOpcion=int(input("Ingrese la opcion deseada: "))
+#     except ValueError:
+#         print("Debe ingresar un numero")
+#     else:
+#         if nOpcion >= len(opciones) or nOpcion < 0:        
+#             print("El valor debe ser ser una de las opciones")
+#         else:
+#             print("")
+#             print("Ha ingresado la opcion",nOpcion)
+#             break
+    #Aca deberia ir el codigo recursivo
 
 archivo=descargar()
 paises=archivo['location'].unique()
-paisesNgram=NGram()
-for pais in paises:
-    #print(pais)
-    paisesNgram.add(pais)
+# if nOpcion == 0:
+#     print("")
+#     print("Imprimiendo lista de paises:")
+#     for pais in paises:
+#         print(pais)
 
-# %% adquisicion de paises
+# paisesNgram=NGram()
+# for pais in paises:
+    # print(pais)
+    # paisesNgram.add(pais)
+
+# %% graficando paises limitrofes
+paisesElegidos=["Argentina","Chile","Brazil","Bolivia","Uruguay","Paraguay"]
+fechamin=datetime.date(2020,6,21)
+fechamax=datetime.date(2020,9,21)
+df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario igual
+fig=grafica(opciones[3],fechamin,fechamax,"log")
+#deberia guardar esa grafica?
+# %% grafica con paises ingresados por el usuario
 paisesElegidos=[]
 while True:
-    paistemp=input('Ingrese un pais: (Escriba "No" para finalizar)')
+    paistemp=input('Ingrese un pais: (Escriba "No" para finalizar, "info" para ver la lista de paises)')
     if paistemp.capitalize()==("No"):
-        print("Ok, procesando:")
+        print("Ok, continuando:")
         break
-    paisito=chequear(paistemp)
-    if paisito:
-        if paisito in paisesElegidos:
-            print("El pais",paisito,"ya fue seleccionado")
-        else:
-            paisesElegidos.append(paisito)    
+    elif paistemp.capitalize()==("Info"):
+        print("")
+        print("Imprimiendo lista de paises:")
+        for pais in paises:
+            print(pais)
+    else:
+        paisito=chequear(paistemp)
+        if paisito:
+            if paisito in paisesElegidos:
+                print("El pais",paisito,"ya fue seleccionado")
+            else:
+                paisesElegidos.append(paisito)    
 
-df=archivo.loc[archivo['location'].isin(paisesElegidos)]
+df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario igual
 
-# % switch:
+# %% switch: para ver que funcion realiza luego
 npaises=len(paisesElegidos)
 if npaises==0:
     print("No se seleccionaron paises, terminando.")
 elif npaises==1:
     print("Se selecciono un pais nomas")
-    print(df)
+    temp=input('Desea ingresar un rango temporal? Si no lo ingresa, se mostrara los datos desde el inicio hasta el dia de hoy. Ingrese Si/No')
+    while True:
+        if temp.capitalize()=="Si":
+            fechamin,fechamax=ingresarfechas()
+            break
+        elif temp.capitalize()=="No":
+            fechamin=df["date"].min()
+            fechamax=df["date"].max()
+            break
+        else:
+            temp=input("Ingreso una opcion incorrecta: Desea ingresar una fecha? Si/No:")
+    grafica(opciones[3]["column"],fechamin,fechamax,"uno")
 elif npaises==2:
-    print("Eskere")
+    print("Se seleccionaron dos paises")
+    temp=input('Desea ingresar un rango temporal? Si no lo ingresa, se mostrara los datos desde el inicio hasta el dia de hoy. Ingrese Si/No')
+    while True:
+        if temp.capitalize()=="Si":
+            fechamin,fechamax=ingresarfechas()
+            break
+        elif temp.capitalize()=="No":
+            fechamin=df["date"].min()
+            fechamax=df["date"].max()
+            break
+        else:
+            temp=input("Ingreso una opcion incorrecta: Desea ingresar una fecha? Si/No:")
+    grafica(opciones[3],fechamin,fechamax,"")
+    grafica(opciones[4],fechamin,fechamax,"")
 else:
-    print("opa opa que rica esta la sopa")
-
-# %%
-def grafica(dato,fechamin,fechamax):
-    plt.figure(figsize=(12,4))
-    for pais in paisesElegidos:
-        #print(pais)
-        data=df[df["location"]==pais]
-        #print(data)
-        plt.plot(data["date"],data[dato],label=pais)
-    plt.xlim(fechamin,fechamax)
-    plt.xticks(rotation=60)
-    plt.legend()
-    plt.title(opciones[nOpcion]["texto"])
-    plt.grid()
-    plt.show()
-    print("ingrese la fecha inicial para graficar")
-    fechamin=getdate()
-    print("Ingrese la fecha final para graficar")
-    fechamax=getdate()
-    grafica("new_cases",fechamin,fechamax)
-#df.plot()
-# %%
+    print("Ha selecionado",npaises,"paises.")
+    fechamin,fechamax=ingresarfechas()
+    grafica(opciones[3],fechamin,fechamax,"log")
 
 
 # %%
+
