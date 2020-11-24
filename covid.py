@@ -32,6 +32,7 @@ import datetime                 #Para manejar fechas
     # from ngram import NGram
 
 archivo=[]
+#opciones serviria para graficar por ejemplo, casos por dia o opciones fuera de lo basico
 opciones=[      #Para sanitizar entradas y hacer graficas customizadas
     {"column":"paises",
     "texto":"Ver lista de paises"
@@ -72,6 +73,9 @@ def descargar():    #Realmente descarga archivo y lo guarda
     return archivo
 
 def interseccion(dato11,dato12,dato21,dato22,dia):  #Grafica los puntos de interseccion
+    #Esta funcion determina la interseccion utilizando un metodo con determinantes de matrices
+    #No sabria explicarlo pero funciona
+    #dato11 y dato12 determinan una recta, dato21 y dato22 determinan otra
     m1=np.linalg.det(np.array([[0,dato11],[1, dato12]]))
     m2=-1
     m3=np.linalg.det(np.array([[0,dato21],[1, dato22]]))
@@ -81,7 +85,7 @@ def interseccion(dato11,dato12,dato21,dato22,dia):  #Grafica los puntos de inter
     denom=np.linalg.det(np.array([[m2,m5],[m4,m6]]))
     x=np.linalg.det(np.array([[m1,m2],[m3,m4]]))/denom
     y=np.linalg.det(np.array([[m1,m5],[m3,m6]]))/denom
-    x=dia+datetime.timedelta(hours=int(x*24))
+    x=dia+datetime.timedelta(hours=int(x*24))   #se devuelve el x en formato fecha a partir del dia inicial
     return x,y
 
 def chequear(pais): #Analiza si el pais ingresado es parte de los paises disponibles
@@ -90,7 +94,9 @@ def chequear(pais): #Analiza si el pais ingresado es parte de los paises disponi
         print("El pais seleccionado es",pais)
         return pais
 #Usando ngram, corregia errores de tipeo
-
+    if pais in paises:
+        print("El pais seleccionado es",pais)
+        return pais
     # elif paisesNgram.find(pais,.2):
         # pais=paisesNgram.find(pais,.2)
         # print("El pais seleccionado es",pais)
@@ -107,14 +113,14 @@ def getdate():  #Devuelve fechamin y fechamax
             date1 = datetime.datetime(anio,mes,dia)
             break
         except ValueError:
-            print("fecha incorrecta")
+            print("fecha incorrecta, intente nuevamente")
     return date1
 
 def grafica(dato,fechamin,fechamax,extra):
-    fig= plt.figure(figsize=(12,4))
-    if extra=="log":    #Se cambia la escala a logaritmica si se llama con ese argumento
+    fig= plt.figure(figsize=(12,4)) #se genera la grafica
+    if extra=="log":                #Se cambia la escala a logaritmica si se llama con ese argumento
         plt.yscale("log")
-    for pais in paisesElegidos:
+    for pais in paisesElegidos:     #grafica la curva para cada pais
         data=df[df["location"]==pais]
         if extra=="uno":    #grafico a realizar cuando es un solo pais
             plt.plot(data["date"],data["total_cases"],label="Casos totales")
@@ -123,24 +129,23 @@ def grafica(dato,fechamin,fechamax,extra):
         else:
             plt.plot(data["date"],data[dato.get("column")],label=pais)
             plt.title(dato.get("texto"))
-    if extra=="dos":
-        rango=pd.date_range(start=fechamin,end=fechamax)
-        for dia in rango:
-            try:
+    if extra=="dos":        #para el caso de dos paises, hay que buscar los puntos de interseccion
+        rango=pd.date_range(start=fechamin,end=fechamax)    #genera un rango de fechas para analizar
+        for dia in rango:       #para cada fecha, analiza si tiene los valores necesarios:
+            try:                #existe el caso de que no hayan datos para una fecha dada
+                #para cada pais, se buscan la cantidad de casos del dia y del dia siguiente:
                 dato11=int(df[(df["date"]==dia)& (df["location"]==paisesElegidos[0])][dato.get("column")])  
                 dato21=int(df[(df["date"]==dia)& (df["location"]==paisesElegidos[1])][dato.get("column")])     
                 dato12=int(df[(df["date"]==dia+datetime.timedelta(days=1))& (df["location"]==paisesElegidos[0])][dato.get("column")])     
                 dato22=int(df[(df["date"]==dia+datetime.timedelta(days=1))& (df["location"]==paisesElegidos[1])][dato.get("column")])     
-                #if dato11 and dato12 and dato22 and dato21:
-                if (dato11-dato21)*(dato12-dato22)<=0:
-                    x,y=interseccion(dato11,dato12,dato21,dato22,dia)
-                    plt.plot(x,y,'bo')
+                if (dato11-dato21)*(dato12-dato22)<=0:                  #analiza si hay un cruce entre ambos datos
+                    x,y=interseccion(dato11,dato12,dato21,dato22,dia)   #si hay, obtiene las coord del punto
+                    plt.plot(x,y,'bo')                                  #y finalmente lo grafica
             except:
-                pass
+                pass    #en caso de que no se encuentre alguno de los datos, no hace nada
     plt.xlim(fechamin,fechamax) #limita la grafica entre fechamin y fechamax
     plt.xticks(rotation=60)
     plt.legend()                #Muestra los nombres de los paises
-    #plt.title(opciones[nOpcion]["texto"])
     plt.grid()                  #Agrega grilla
     plt.show()                  #La grafica
     return fig
@@ -153,23 +158,23 @@ def ingresarfechas():
     return fechamin,fechamax
 
 # %% Codigo principal:
-archivo=descargar()
-paises=archivo['location'].unique()
+archivo=descargar()                     #guarda el archivo y genera el datafram
+paises=archivo['location'].unique()     #genera una lista de paises posibles
 
 # paisesNgram=NGram()
 # for pais in paises:
     # print(pais)
     # paisesNgram.add(pais)
 
-# %% graficando paises limitrofes
+# %% graficando paises limitrofes:
 paisesElegidos=["Argentina","Chile","Brazil","Bolivia","Uruguay","Paraguay"]
-fechamin=datetime.datetime(2020,6,21)
-fechamax=datetime.datetime(2020,9,21)
-df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario igual
+fechamin=datetime.datetime(2020,6,21)   #fecha de inicio del invierno
+fechamax=datetime.datetime(2020,9,21)   #fecha de fin del invierno
+df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario pero es mas facil que trabajar con el archivo completo
 print("Graficando casos de Argentina y sus paises limítrofes:")
-fig=grafica(opciones[3],fechamin,fechamax,"log")
+fig=grafica(opciones[3],fechamin,fechamax,"log")  
 # %% grafica con paises ingresados por el usuario
-paisesElegidos=[]
+paisesElegidos=[]   #vacia la lista de paises y le pide al usuario que ingrese los paises nuevos:
 print("Si no ingresa ningun pais, el programa termina. Si ingresa un pais, se graficará la cantidad de casos y muertes totales.")
 print("Si ingresa dos paises, se graficarán casos y muertes totales, marcando intersecciones si en algun momento los datos se cruzan")
 print("Si ingresa mas de dos paises, se graficara casos y muertes totales, utilizando una escala logaritmica")
@@ -184,29 +189,29 @@ while True:
         for pais in paises:
             print(pais)
     else:
-        paisito=chequear(paistemp)
-        if paisito:
-            if paisito in paisesElegidos:
+        paisito=chequear(paistemp)              #revisa si el texto ingresado corresponde a un pais
+        if paisito:                             #si no corresponde, paisito es none
+            if paisito in paisesElegidos:       #chequea redundancia de datos
                 print("El pais",paisito,"ya fue seleccionado")
             else:
-                paisesElegidos.append(paisito)    
+                paisesElegidos.append(paisito)  #si no estaba en la lista, lo agrega
 
-df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario igual
+df=archivo.loc[archivo['location'].isin(paisesElegidos)]    #Arreglo con los datos requeridos, no es necesario pero agiliza el programa
 
 # %% switch: para ver que funcion realiza luego
-npaises=len(paisesElegidos)
+npaises=len(paisesElegidos) #segun cuantos paises hay es lo que hace:
 if npaises==0:
     print("No se seleccionaron paises, terminando.")
 elif npaises==1:
-    print("Se selecciono un pais nomas")
+    print("Se selecciono un solo pais")
     temp=input('Desea ingresar un rango temporal? Si no lo ingresa, se mostrara los datos desde el inicio hasta el dia de hoy. Ingrese Si/No')
     while True:
-        if temp.capitalize()=="Si":
+        if temp.capitalize()=="Si":     #permite ingresar fechas
             fechamin,fechamax=ingresarfechas()
             break
-        elif temp.capitalize()=="No":
-            fechamin=df["date"].min()
-            fechamax=df["date"].max()
+        elif temp.capitalize()=="No":   #Toma como minimo la primer fecha de los paises seleccionados
+            fechamin=df["date"].min()   
+            fechamax=df["date"].max()   #y como final el dia de hoy
             break
         else:
             temp=input("Ingreso una opcion incorrecta: Desea ingresar una fecha? Si/No:")
@@ -224,12 +229,9 @@ elif npaises==2:
             break
         else:
             temp=input("Ingreso una opcion incorrecta: Desea ingresar una fecha? Si/No:")
-    grafica(opciones[3],fechamin,fechamax,"dos")
-    grafica(opciones[4],fechamin,fechamax,"dos")
+    grafica(opciones[3],fechamin,fechamax,"dos")    #grafica casos totales
+    grafica(opciones[4],fechamin,fechamax,"dos")    #grafica muertes totales
 else:
     print("Ha selecionado",npaises,"paises.")
     fechamin,fechamax=ingresarfechas()
-    grafica(opciones[3],fechamin,fechamax,"log")
-
-
-# %%
+    grafica(opciones[3],fechamin,fechamax,"log")    #grafica solo casos totales en escala logaritmica
